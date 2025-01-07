@@ -1,18 +1,21 @@
 import tkinter as tk
 from tkinter import messagebox
 from typing import Literal
+import random
 
 def create_widgets():
-    global  wins_entry, x_wins, o_wins, label_x, label_o
+    global  wins_entry, x_wins, o_wins, label_x, label_o, selected_option, start_btn, radiobutton1, radiobutton2
     label_title = tk.Label()
-    label_title.config(text='Игра крестики-нолики!', font=('Arial', 16))
+    label_title.config(text='Игра крестики-нолики!', font=('Arial', 18))
     label_title.grid(row=0, column=0, columnspan=4, pady=10)
+    start_btn = tk.Button(text='Старт игры', font=('Arial', 12), bg='chartreuse', command=on_click_start)
+    start_btn.grid(row=1, column=3, padx=10, pady=(0, 20))
     label_question = tk.Label()
     label_question.config(text='До скольки побед?', font=('Arial', 12))
-    label_question.grid(row=1, column=3, padx=10)
+    label_question.grid(row=2, column=3, padx=10, pady=(20, 0))
     wins_entry = tk.Entry()
     wins_entry.config(width=5, font=('Arial', 12))
-    wins_entry.grid(row=2, column=3, padx=10)
+    wins_entry.grid(row=3, column=3, padx=10, pady=(0, 25))
     wins_entry.insert(0, '3')
     label_x = tk.Label()
     label_o = tk.Label()
@@ -20,10 +23,16 @@ def create_widgets():
     label_x.grid(row=4, column=0, columnspan=3, pady=(10, 0))
     label_o.config(text='Побед O: ' + str(o_wins), font=('Arial', 12))
     label_o.grid(row=5, column=0, columnspan=3)
-    reset_btn = tk.Button(text='Начать заново', font=('Arial', 12), command=on_click_reset)
-    reset_btn.grid(row=3, column=3, padx=10)
-
+    label_choose = tk.Label()
+    label_choose.config(text='За кого играть?', font=('Arial', 12))
+    label_choose.grid(row=4, column=3, padx=10)
+    radiobutton1 = tk.Radiobutton(text="Играть за X", variable=selected_option, value="Игрок X", font=('Arial', 12))
+    radiobutton2 = tk.Radiobutton(text="Играть за O", variable=selected_option, value="Игрок O", font=('Arial', 12))
+    radiobutton1.grid(row=5, column=3, padx=10)
+    radiobutton2.grid(row=6, column=3, padx=10)
     window.grid_columnconfigure(3, minsize=220)
+    reset_btn = tk.Button(text='Начать заново', font=('Arial', 12), bg='khaki', command=on_click_reset)
+    reset_btn.grid(row=6, column=0, columnspan=3, padx=10, pady=(20,0))
 
 def get_valid_max_wins():
     try:
@@ -39,16 +48,34 @@ def get_valid_max_wins():
         wins_entry.config(state='disabled')
         return 3
 
-def on_click_reset():
-    global current_player, x_wins, o_wins, label_x, label_o
+def on_click_start():
+    global current_player, x_wins, o_wins
     clean_board()
     current_player = 'X'
     buttons_activate('normal')
+    x_wins = 0
+    o_wins = 0
+    label_x.config(text='Побед игрока X: ' + str(x_wins))
+    label_o.config(text='Побед игрока O: ' + str(o_wins))
+    get_valid_max_wins()
+    wins_entry.config(state='disabled')
+    radiobutton1.config(state='disabled')
+    radiobutton2.config(state='disabled')
+    start_btn.config(state='disabled')
+    if current_player == 'X' and selected_option.get() == 'Игрок O':
+        computer_move()
+
+def on_click_reset():
+    clean_board()
+    buttons_activate('disabled')
     wins_entry.config(state='normal')
     x_wins = 0
     o_wins = 0
-    label_x.config(text='Побед X: ' + str(x_wins))
-    label_o.config(text='Побед O: ' + str(o_wins))
+    label_x.config(text='Побед игрока X: ' + str(x_wins))
+    label_o.config(text='Побед игрока O: ' + str(o_wins))
+    radiobutton1.config(state='normal')
+    radiobutton2.config(state='normal')
+    start_btn.config(state='normal')
 
 
 def on_click(row, col):
@@ -58,17 +85,15 @@ def on_click(row, col):
         if check_winner():
             if current_player == 'X':
                 x_wins += 1
-                label_x.config(text='Побед X: ' + str(x_wins))
-                wins_entry.config(state='disabled')
-                if x_wins == get_valid_max_wins():
+                label_x.config(text='Побед игрока X: ' + str(x_wins))
+                if x_wins == int(wins_entry.get()):
                     messagebox.showinfo('Конец игры!', f'Окончательная победа у {current_player}')
                     buttons_activate('disabled')
                     return
             else:
                 o_wins += 1
-                label_o.config(text='Побед O: ' + str(o_wins))
-                wins_entry.config(state='disabled')
-                if o_wins == get_valid_max_wins():
+                label_o.config(text='Побед игрока O: ' + str(o_wins))
+                if o_wins == int(wins_entry.get()):
                     messagebox.showinfo('Конец игры!', f'Окончательная победа у {current_player}')
                     buttons_activate('disabled')
                     return
@@ -76,6 +101,8 @@ def on_click(row, col):
             messagebox.showinfo('Победа!', f'Победил {current_player}')
             clean_board()
             current_player = 'X'
+            if current_player == 'X' and selected_option.get() == 'Игрок O':
+                computer_move()
         else:
             if is_board_full():
                 messagebox.showinfo('Конец!', f'Ничья!')
@@ -83,7 +110,17 @@ def on_click(row, col):
                 current_player = 'X'
             else:
                 current_player = 'O' if current_player == 'X' else 'X'
+                if current_player == 'O' and selected_option.get() == 'Игрок X':
+                    computer_move()
+                elif current_player == 'X' and selected_option.get() == 'Игрок O':
+                    computer_move()
 
+def computer_move():
+    global current_player
+    empty_cells = [(i, j) for i in range(3) for j in range(3) if buttons[i][j]['text'] == '']
+    if empty_cells:
+        row, col = random.choice(empty_cells)
+        on_click(row, col)
 
 def check_winner():
     for i in range(3):
@@ -119,16 +156,15 @@ def buttons_activate(action: Literal["normal", "disabled"]):
 
 
 
-
-
 window = tk.Tk()
 window.title('Крестики-нолики')
-window.geometry('450x300')
+window.geometry('450x350')
 
 current_player = 'X'
 buttons = []
 x_wins = 0
 o_wins = 0
+selected_option = tk.StringVar(value="Игрок X")
 
 create_widgets()
 
@@ -144,5 +180,6 @@ for i in range(3):
         else:
             btn.grid(row=i+1, column=j)
     buttons.append(row)
+buttons_activate("disabled")
 
 window.mainloop()
